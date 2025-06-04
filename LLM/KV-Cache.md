@@ -1,4 +1,4 @@
 # What is KV Cache
 During autoregressive decoding a decoder-only Transformer must compute, for every layer and every step $t$
-$$Q_t = x_tW_Q, K_t = x_tW_K, V_t = x_tW_V$$
+$$\begin{aligned}Q_t = x_tW_Q,\qquad K_t = x_tW_K,\qquad V_t = x_tW_V\\\end{aligned}$$
 
