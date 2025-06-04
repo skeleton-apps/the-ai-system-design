@@ -30,7 +30,13 @@ When NOT to use KV-caching
 KV-cache trades GPU memory for a drastic drop in per-token compute, enabling low-latency
 for long-context LLM inference.
 
-
+```mermaid
+graph LR
+A[Square Rect] -- Link text --> B((Circle))
+A --> C(Round Rect)
+B --> D{Rhombus}
+C --> D
+```
 
 
 
