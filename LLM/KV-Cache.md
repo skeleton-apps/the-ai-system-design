@@ -3,9 +3,9 @@ During autoregressive decoding a decoder-only Transformer must compute, for ever
 
 ```math
 \begin{aligned}
-Q_t &= x_t W_Q, \\
-K_t &= x_t W_K, \\
-V_t &= x_t W_V, \\
+Q_t = x_t W_Q, \\
+K_t = x_t W_K, \\
+V_t = x_t W_V, \\
 \textit{Attention}(Q_t, K_{1:t}, V_{1:t}) &= \mathrm{softmax}\left(\frac{Q_t K^T_{1:t}}{\sqrt{d}}\right) V_{1:t}
 \end{aligned}
 ```
