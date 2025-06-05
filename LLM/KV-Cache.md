@@ -165,18 +165,18 @@ V_4=[2,\,2]
 ```math
 K'=
 \begin{bmatrix}
-\color{purple}{1} & \color{purple}{0}\\
-\color{purple}{0} & \color{purple}{1}\\
-\color{purple}{1} & \color{purple}{1}\\
-\color{orange}{2} & \color{orange}{2}
+1 & 0\\
+0 & 1\\
+1 & 1\\
+2 & 2
 \end{bmatrix},
 \quad
 V'=
 \begin{bmatrix}
-\color{purple}{0} & \color{purple}{1}\\
-\color{purple}{1} & \color{purple}{0}\\
-\color{purple}{1} & \color{purple}{1}\\
-\color{orange}{2} & \color{orange}{2}
+0 & 1\\
+1 & 0\\
+1 & 1\\
+2 & 2
 \end{bmatrix}
 ```
 
@@ -194,8 +194,6 @@ Q_4 K'^{\!\top}=
 =2[0,1]+2[1,0]+4[1,1]+8[2,2]
 =[22,\,22]
 ```
-> **Legend**  
-> *🟨 newly-computed at the current step* *🟪 fetched from KV-cache*  
 
 ---
 
