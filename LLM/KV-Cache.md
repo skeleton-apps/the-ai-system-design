@@ -9,6 +9,34 @@ V_t = x_t W_V, \\
 \textit{Attention}(Q_t, K_{1:t}, V_{1:t}) &= \mathrm{softmax}\left(\frac{Q_t K^T_{1:t}}{\sqrt{d}}\right) V_{1:t}
 \end{aligned}
 ```
+At step $t$, $Q_t$ only involves the new token $q_t$. The keys and values $K_{1:t-1}$, $V_{1:t-1}$ were already computed at earlier steps. KV-caching stores them once and simply appends $K_t$ and $V_t$
+
+*A deep dive into autoregressive, token-by-token decoding*
+
+> Autoregressive, token-by-token decoding is a process used in AI models, particularly large language models (LLMs) or other sequential models, to
+> generate output sequences (like text or video) one item (or "token") at a time. 
+```math
+\begin{aligned}
+P\!\bigl(x_{1:n}\bigr) \;=\; \prod_{t=1}^{n} P\!\bigl(x_t \,\big|\, x_{1:t-1}\bigr)
+\end{aligned}
+```
+### Why do we cache **K** & **V**
+
+| Tensor | Needed again? | Re-compute cost | Caching benefit |
+|--------|---------------|-----------------|-----------------|
+| **Q** | **No.** A query dies after its own step | `O(d)` (tiny) | None |
+| **K** | **Yes.** Each new token must dot-product with every past key | `O(t d)` (grows) | Huge |
+| **V** | **Yes.** Required to build the weighted sum once attention weights are known | `O(t d)` | Huge |
+| **QKᵀ** | **No.** Counts will change the moment a new query arrives | `O(t d)` | None |
+
+**Key takeaway:**  
+> Past queries are “one-shot”, however past keys & values are needed for the current sequence. This Caching only K and V maximizes reuse.
+
+---
+
+## 1 What *exactly* is happening in autoregressive decoding?
+
+At inference time a language model writes one token, feeds it back, then writes the next:
 
 **Note**: Only $Q_t$ involves the new token. The keys and values $K_{1:t-1}$, $V_{1:t-1}$ were already computed at earlier steps. KV-caching stores them once and simply appends $K_t$ and $V_t$
 
@@ -30,59 +58,152 @@ When NOT to use KV-caching
 KV-cache trades GPU memory for a drastic drop in per-token compute, enabling low-latency
 for long-context LLM inference.
 
-```mermaid
-graph LR
-A[Square Rect] -- Link text --> B((Circle))
-A --> C(Round Rect)
-B --> D{Rhombus}
-C --> D
+
+## Examples
+
+## 1. Full Re-computation **(no KV-cache)**
+
+All four queries $Q$, keys $K$, and values $V$ are re-evaluated.
+
+```math
+Q =
+\begin{bmatrix}
+1 & 0\\
+0 & 1\\
+1 & 1\\
+2 & 2
+\end{bmatrix},\;
+K =
+\begin{bmatrix}
+1 & 0\\
+0 & 1\\
+1 & 1\\
+2 & 2
+\end{bmatrix},\;
+V =
+\begin{bmatrix}
+0 & 1\\
+1 & 0\\
+1 & 1\\
+2 & 2
+\end{bmatrix}
+```
+### 1.1 Attention scores  
+
+```math
+QK^{\!\top}=
+\begin{bmatrix}
+1 & 0 & 1 & 2\\
+0 & 1 & 1 & 2\\
+1 & 1 & 2 & 4\\
+2 & 2 & 4 & 8
+\end{bmatrix}
 ```
 
-```mermaid
-%%{init: {'theme':'default','logLevel':'fatal'}}%%
-flowchart LR
-    %% ─────────────────  column-wise layout  ─────────────────
-    subgraph COL1[" "]  direction TB
-        x1_lbl["X₁"]:::top
-        x1_box([" "]):::sq
-        bos(["[bos]"]):::bot
-    end
+### 1.2 Multiply by **V**  
+Row 4 (Token 4) as an example:
 
-    subgraph COL2[" "]  direction TB
-        x2_lbl["X₂"]:::top
-        x2_box([" "]):::sq
-        stub2([" "]):::bot        %% invisible anchor
-    end
+```math
+(QK^{\!\top})V \;=\;
+\begin{bmatrix}
+1 & 0 & 1 & 2\\
+0 & 1 & 1 & 2\\
+1 & 1 & 2 & 4\\
+2 & 2 & 4 & 8
+\end{bmatrix} . 
+\begin{bmatrix}
+0 & 1\\
+1 & 0\\
+1 & 1\\
+2 & 2
+\end{bmatrix} \;=\;
+\boxed{
+\begin{bmatrix}
+5 & 6\\
+6 & 5\\
+11 & 11\\
+22 & 22
+\end{bmatrix}}
+```
 
-    subgraph COL3[" "]  direction TB
-        x3_lbl["X₃"]:::top
-        x3_box([" "]):::sq
-        stub3([" "]):::bot
-    end
 
-    subgraph COL4[" "]  direction TB
-        eos_lbl["[eos]"]:::top
-        eos_box([" "]):::sq
-        stub4([" "]):::bot
-    end
+## 2&nbsp;▪&nbsp;Incremental decode **with KV-cache**
 
-    %% ─────────────────  vertical feed arrows  ─────────────────
-    bos      --> x1_box --> x1_lbl
-    stub2    --> x2_box --> x2_lbl
-    stub3    --> x3_box --> x3_lbl
-    stub4    --> eos_box --> eos_lbl
+Only the latest token (Token 4) is computed; previous Key-Value pairs are **re-used**.
 
-    %% ─────────────────  curved loop-back arrows  ─────────────────
-    x1_box -.-> x2_box
-    x2_box -.-> x3_box
-    x3_box -.-> eos_box
+### 2.1 Cached tensors (after Tokens 1–3)
 
-    %% ─────────────────  styling  ─────────────────
-    classDef sq  fill:#f8baba,stroke:#000;
-    classDef top fill:#ffffff,stroke:#000,stroke-dasharray:4 3;
-    classDef bot fill:#ffffff,stroke:#000,stroke-width:0;
+```math
+K_\text{cache}=
+\boxed{
+\begin{bmatrix}
+1 & 0\\
+0 & 1\\
+1 & 1
+\end{bmatrix}}
+,\qquad
+V_\text{cache}=
+\boxed{
+\begin{bmatrix}
+0 & 1\\
+1 & 0\\
+1 & 1
+\end{bmatrix}}
+```
 
+### 2.2 Newly-computed tensors (Token 4)
+
+```math
+Q_4=[2,\,2],\;
+K_4=[2,\,2],\;
+V_4=[2,\,2]
+```
+
+
+### 2.3 Concatenate cached + New
+
+```math
+K'=
+\begin{bmatrix}
+\color{purple}{1} & \color{purple}{0}\\
+\color{purple}{0} & \color{purple}{1}\\
+\color{purple}{1} & \color{purple}{1}\\
+\color{orange}{2} & \color{orange}{2}
+\end{bmatrix},
+\quad
+V'=
+\begin{bmatrix}
+\color{purple}{0} & \color{purple}{1}\\
+\color{purple}{1} & \color{purple}{0}\\
+\color{purple}{1} & \color{purple}{1}\\
+\color{orange}{2} & \color{orange}{2}
+\end{bmatrix}
 ```
 
 
 
+### 2.4 Single-row attention
+
+```math
+Q_4 K'^{\!\top}=
+[2,\,2,\,4,\,8]
+```
+```math
+\begin{bmatrix}2 & 2 & 4 & 8\end{bmatrix}
+\! \times V'
+=2[0,1]+2[1,0]+4[1,1]+8[2,2]
+=[22,\,22]
+```
+> **Legend**  
+> *🟨 newly-computed at the current step* *🟪 fetched from KV-cache*  
+
+---
+
+### 🚀 Complexity Comparison
+
+| Method | Per-step cost |
+|--------|---------------|
+| No cache | $O(n^2)$ |
+| With cache | $O(n)$ |
+
+KV-caching therefore keeps latency linear in sequence length during autoregressive decoding.
