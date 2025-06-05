@@ -41,44 +41,47 @@ C --> D
 ```mermaid
 %%{init: {'theme':'default','logLevel':'fatal'}}%%
 flowchart LR
-    %% ───────────  layout  ───────────
-    direction TB
-    subgraph S[" "]   %% keeps the blocks in one row
-        direction LR
-        %% token columns (label on top, square below)
-        subgraph C1[" "]  direction TB
-            xl1["X₁"]:::lbl
-            x1([" "]):::tok
-        end
-        subgraph C2[" "]  direction TB
-            xl2["X₂"]:::lbl
-            x2([" "]):::tok
-        end
-        subgraph C3[" "]  direction TB
-            xl3["X₃"]:::lbl
-            x3([" "]):::tok
-        end
-        subgraph C4[" "]  direction TB
-            xle["[eos]"]:::lbl
-            xe([" "]):::tok
-        end
+    %% ─────────────────  column-wise layout  ─────────────────
+    subgraph COL1[" "]  direction TB
+        x1_lbl["X₁"]:::top
+        x1_box([" "]):::sq
+        bos(["[bos]"]):::bot
     end
 
-    %% ───────────  arrows  ───────────
-    bos(["[bos]"]):::lbl
-    bos --> x1                      %% teacher-forcing feed
-    x1 --> x2
-    x2 --> x3
-    x3 --> xe
+    subgraph COL2[" "]  direction TB
+        x2_lbl["X₂"]:::top
+        x2_box([" "]):::sq
+        stub2([" "]):::bot        %% invisible anchor
+    end
 
-    %% dotted “feedback” arrows (curved look-alikes)
-    x1 -.-> x2
-    x2 -.-> x3
-    x3 -.-> xe
+    subgraph COL3[" "]  direction TB
+        x3_lbl["X₃"]:::top
+        x3_box([" "]):::sq
+        stub3([" "]):::bot
+    end
 
-    %% ───────────  styles  ───────────
-    classDef tok  fill:#f8baba,stroke:#000;
-    classDef lbl  fill:#ffffff,stroke:#000,stroke-dasharray:4 3;
+    subgraph COL4[" "]  direction TB
+        eos_lbl["[eos]"]:::top
+        eos_box([" "]):::sq
+        stub4([" "]):::bot
+    end
+
+    %% ─────────────────  vertical feed arrows  ─────────────────
+    bos      --> x1_box --> x1_lbl
+    stub2    --> x2_box --> x2_lbl
+    stub3    --> x3_box --> x3_lbl
+    stub4    --> eos_box --> eos_lbl
+
+    %% ─────────────────  curved loop-back arrows  ─────────────────
+    x1_box -.-> x2_box
+    x2_box -.-> x3_box
+    x3_box -.-> eos_box
+
+    %% ─────────────────  styling  ─────────────────
+    classDef sq  fill:#f8baba,stroke:#000;
+    classDef top fill:#ffffff,stroke:#000,stroke-dasharray:4 3;
+    classDef bot fill:#ffffff,stroke:#000,stroke-width:0;
+
 ```
 
 
