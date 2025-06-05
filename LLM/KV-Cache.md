@@ -37,78 +37,48 @@ A --> C(Round Rect)
 B --> D{Rhombus}
 C --> D
 ```
+
 ```mermaid
 %%{init: {'theme':'default','logLevel':'fatal'}}%%
 flowchart LR
-    %% ---------- (a) ----------
-    subgraph A["(a)"]
-        direction TB
-
-        %% input X
-        subgraph aX["X"]
-            direction LR
-            ax1[" "]:::in
-            ax2[" "]:::in
-            ax3[" "]:::in
-            ax4[" "]:::in
-            ax5[" "]:::in
+    %% ───────────  layout  ───────────
+    direction TB
+    subgraph S[" "]   %% keeps the blocks in one row
+        direction LR
+        %% token columns (label on top, square below)
+        subgraph C1[" "]  direction TB
+            xl1["X₁"]:::lbl
+            x1([" "]):::tok
         end
-
-        %% output Y (teacher-forcing, token-by-token)
-        subgraph aY["Y"]
-            direction LR
-            bos(["[bos]"]):::special
-            ay1(["Y₁"]):::out
-            ay2(["Y₂"]):::out
-            ay3(["Y₃"]):::out
-            eos(["[eos]"]):::special
-
-            bos --> ay1
-            ay1 --> ay2
-            ay2 --> ay3
-            ay3 --> eos
-
-            %% curved feedback arrows (dotted)
-            ay1 -.-> ay2
-            ay2 -.-> ay3
-            ay3 -.-> eos
+        subgraph C2[" "]  direction TB
+            xl2["X₂"]:::lbl
+            x2([" "]):::tok
         end
-
-        aX --> aY
+        subgraph C3[" "]  direction TB
+            xl3["X₃"]:::lbl
+            x3([" "]):::tok
+        end
+        subgraph C4[" "]  direction TB
+            xle["[eos]"]:::lbl
+            xe([" "]):::tok
+        end
     end
 
-    %% ---------- (b) ----------
-    subgraph B["(b)"]
-        direction TB
+    %% ───────────  arrows  ───────────
+    bos(["[bos]"]):::lbl
+    bos --> x1                      %% teacher-forcing feed
+    x1 --> x2
+    x2 --> x3
+    x3 --> xe
 
-        %% input X
-        subgraph bX["X"]
-            direction LR
-            bx1[" "]:::in
-            bx2[" "]:::in
-            bx3[" "]:::in
-            bx4[" "]:::in
-            bx5[" "]:::in
-        end
+    %% dotted “feedback” arrows (curved look-alikes)
+    x1 -.-> x2
+    x2 -.-> x3
+    x3 -.-> xe
 
-        %% output Y (known length)
-        subgraph bY["Y"]
-            direction LR
-            by1(["Y₁"]):::out
-            by2(["Y₂"]):::out
-            by3(["Y₃"]):::out
-            by4(["Y₄"]):::out
-
-            by1 --> by2 --> by3 --> by4
-        end
-
-        bX -->|output length| bY
-    end
-
-    %% ---------- styles ----------
-    classDef in     fill:#b7eec5,stroke:#333;
-    classDef out    fill:#f8baba,stroke:#333;
-    classDef special fill:#ffffff,stroke:#333,stroke-dasharray:5 3;
+    %% ───────────  styles  ───────────
+    classDef tok  fill:#f8baba,stroke:#000;
+    classDef lbl  fill:#ffffff,stroke:#000,stroke-dasharray:4 3;
 ```
 
 
