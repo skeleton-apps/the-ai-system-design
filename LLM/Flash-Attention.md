@@ -12,8 +12,8 @@ V = x W, \\
 \end{aligned}
 ```
 GPU memory Levels
-* High Bandwidth Memory (HBM): Large capacity, but relatively slow access
-* SRAM (Shared Memory): Small capacity, but significantly faster access (on-chip).
+* **High Bandwidth Memory (HBM)**: Large capacity, but relatively slow access
+* **SRAM (Shared Memory)**: Small capacity, but significantly faster access (on-chip).
 The attention calculation often involves repeatedly reading and writing these large intermediate matrices (score matrix) between HBM and SRAM. This constant data transfer is the main cause of slow performance and out-of-memory errors for long sequences.
 ## How Flash Attention Attentions tackles this issue
 Flash Attention tackles this memory bottleneck through two main techniques
